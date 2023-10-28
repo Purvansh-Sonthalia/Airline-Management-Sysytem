@@ -4,6 +4,29 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+
+class Node implements Comparator<Node>
+{
+    private Integer v;
+    private Integer weight;
+    
+    Node(int _v, int _w) { v = _v; weight = _w; }
+    
+    Node() {}
+    
+    Integer getV() { return v; }
+    Integer getWeight() { return weight; }
+    
+    @Override
+    public int compare(Node node1, Node node2) 
+    { 
+        if (node1.weight < node2.weight) 
+            return -1; 
+        if (node1.weight > node2.weight) 
+            return 1; 
+        return 0; 
+    } 
+}
 public class Flight extends FlightDistance {
 
     //        ************************************************************ Fields ************************************************************
@@ -25,6 +48,7 @@ public class Flight extends FlightDistance {
     ArrayList<ArrayList<Integer>> edges= new ArrayList<ArrayList<Integer>>();
     Map<String,Integer> mp= new HashMap<>();
     Map<Integer,String> mp2= new HashMap<>();
+    ArrayList<ArrayList<Node>> adj=new ArrayList<ArrayList<Node>>();
     //        ************************************************************ Behaviours/Methods ************************************************************
    //----------------------------------------------------------------------------------------
     class Solution {
@@ -46,7 +70,13 @@ public class Flight extends FlightDistance {
                 }
             }
             for(int i=0;i<V;i++){
-                System.out.println(mp2.get(S)+" ------> "+mp2.get(i)+" : "+dist[i]);
+                if(mp2.get(S)==mp2.get(i)){
+                    continue;
+                }
+                if(dist[i]>=1e8){
+                    User.addToMessage(mp2.get(S)+" ------> "+mp2.get(i)+" : "+"No route");
+                }
+                User.addToMessage(mp2.get(S)+" ------> "+mp2.get(i)+" : "+dist[i]);
             }
             
         }
@@ -225,14 +255,6 @@ public class Flight extends FlightDistance {
         while (list.hasNext()) {
             Flight flight = list.next();
             if (flight.getFlightNumber().equalsIgnoreCase(flightNumber)) {
-                Integer from=mp.get(flight.fromWhichCity);
-                Integer to=mp.get(flight.toWhichCity);
-                Integer cost=flight.cost.intValue();
-                ArrayList<Integer> a = new ArrayList<>();
-                a.add(from);
-                a.add(to);
-                a.add(cost);
-               edges.remove(a);
                 isFound = true;
                 break;
             }
@@ -240,9 +262,10 @@ public class Flight extends FlightDistance {
         if (isFound) {
             list.remove();
         } else {
-            System.out.println("Flight with given Number not found...");
+            User.addToMessage("Flight with given Number not found...");
         }
         displayFlightSchedule();
+        
     }
 
     /**
@@ -278,27 +301,120 @@ public class Flight extends FlightDistance {
     }
 
     public void displayFlightSchedule() {
-        System.out.println("the edges size is:"+edges.size());
+        User.addToMessage("the edges size is:"+edges.size());
         Iterator<Flight> flightIterator = flightList.iterator();
-        System.out.println();
-        System.out.print("+------+-------------------------------------------+-----------+------------------+-----------------------+------------------------+---------------------------+-------------+--------+------------------------+\n");
-        System.out.printf("| Num  | FLIGHT SCHEDULE\t\t\t   | FLIGHT NO | Available Seats  | \tFROM ====>>       | \t====>> TO\t   | \t    ARRIVAL TIME       | FLIGHT TIME |  GATE  |   DISTANCE(MILES/KMS)  | COST %n");
-        System.out.print("+------+-------------------------------------------+-----------+------------------+-----------------------+------------------------+---------------------------+-------------+--------+------------------------+\n");
+        User.addToMessage();
+        //System.out.print("+------+-------------------------------------------+-----------+------------------+-----------------------+------------------------+---------------------------+-------------+--------+------------------------+\n");
+        User.addToMessage("| Num  | FLIGHT NO | Available Seats | FROM ====>> | ====>> TO | ARRIVAL TIME | FLIGHT TIME |  GATE  | DISTANCE(MILES/KMS) | COST ");
+        //System.out.print("+------+-------------------------------------------+-----------+------------------+-----------------------+------------------------+---------------------------+-------------+--------+------------------------+\n");
         int i = 0;
         while (flightIterator.hasNext()) {
             i++;
             Flight f1 = flightIterator.next();
-            System.out.println(f1.toString(i));
-             System.out.print("+------+-------------------------------------------+-----------+------------------+-----------------------+------------------------+---------------------------+-------------+--------+------------------------+\n");
+            User.addToMessage(f1.toString(i));
+            //System.out.print("+------+-------------------------------------------+-----------+------------------+-----------------------+------------------------+---------------------------+-------------+--------+------------------------+\n");
         }
-        System.out.println("edges:"+edges);
+        User.addToMessage("edges:"+edges);
         Solution s= new Solution();
         s.check(mp.size(), edges);
+        User.showFlights(User.message);
+        for(int k=0;k<mp.size();k++){
+          adj.add(new ArrayList<Node>());
+        }
+        for (ArrayList<Integer> it : edges) {
+            int u = it.get(0);
+            int v = it.get(1);
+            int wt = it.get(2);
+            adj.get(u).add(new Node(v,wt));
+        }
+        
+    }
+//    public void recursion(Integer src,Integer dst,ArrayList<Integer> vis,ArrayList<Integer> temp,Integer price){
+//          if(src.equals(dst)){
+//             String ok="";
+//            for(int i=0;i<temp.size();i++){
+//             ok=ok+mp2.get(temp.get(i))+"->";
+//            }
+//            ok=ok+"pirce:"+price.toString();
+//            User.raiseError(ok);
+//            return;
+//          }
+//          vis.set(src,1);
+//          for(Node it:adj.get(src)){
+//               if(vis.get(it.getV())==0){
+//                 temp.add(it.getV());
+//                 recursion(it.getV(), dst, vis, temp, price+it.getWeight());
+//                 temp.remove(temp.size()-1);
+//               }
+//          }
+//          vis.set(src, 0);
+//          return;
+//     }
+    //---------------------------------------//
+    public class Edge {
+        Integer src, dest, weight;
+
+        Edge(int src, int dest, int weight) {
+            this.src = src;
+            this.dest = dest;
+            this.weight = weight;
+        }
     }
 
+    public void printAllPaths(List<Edge>[] graph, int src, int dest) {
+        Set<Integer> visited = new HashSet<>();
+        List<String> pathList = new ArrayList<>();
+
+        pathList.add(mp2.get(src));
+        Integer price=0;
+        printAllPathsUtil(graph, src, dest, visited, pathList,price);
+    }
+
+    public void printAllPathsUtil(List<Edge>[] graph, int src, int dest, Set<Integer> visited, List<String> pathList,Integer price) {
+        if (src == dest) {
+            // System.out.println(pathList);
+            String fin="";
+            for(String it:pathList){
+                fin=fin+it+"->";
+            }
+            fin=fin+"price "+price.toString();
+            User.addToMessage(fin);
+            return;
+        }
+
+        visited.add(src);
+
+        for (Edge edge : graph[src]) {
+            if (!visited.contains(edge.dest)) {
+                pathList.add(mp2.get(edge.dest));
+                printAllPathsUtil(graph, edge.dest, dest, visited, pathList,price+edge.weight);
+                pathList.remove(pathList.size() - 1);
+            }
+        }
+
+        visited.remove(src);
+    }
+//-----------------------//
+
+    public void dst_src(String src ,String dst){
+        if(!mp.containsKey(src)){
+           User.raiseError("!!NO SUCH SOURCE");
+        }
+        if(!mp.containsKey(dst)){
+            User.raiseError("!!NO SUCH Destination");
+         }
+         List<Edge>[] graph = new ArrayList[mp.size()];
+         for (int i = 0; i < mp.size(); i++) {
+            graph[i] = new ArrayList<>();
+        }
+        for(ArrayList<Integer> it:edges){
+            graph[it.get(0)].add(new Edge(it.get(0), it.get(1), it.get(2)));
+        }
+         printAllPaths(graph, mp.get(src), mp.get(dst));
+    }
     @Override
     public String toString(int i) {
-        return String.format("| %-5d| %-41s | %-9s | \t%-9s | %-21s | %-22s | %-10s  |   %-6sHrs |  %-4s  |  %-8s / %-11s| %.2f", i, flightSchedule, flightNumber, numOfSeatsInTheFlight, fromWhichCity, toWhichCity, fetchArrivalTime(), flightTime, gate, distanceInMiles, distanceInKm,cost);
+        return String.format("| %-5d|  %-9s | \t%-9s | %-21s | %-22s |   %-6sHrs |  %-4s  |  %-8s / %-11s| %.2f", i,  flightNumber, numOfSeatsInTheFlight, fromWhichCity, toWhichCity, flightTime, gate, distanceInMiles, distanceInKm,cost);
     }
 
     /**

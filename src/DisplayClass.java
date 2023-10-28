@@ -9,6 +9,4 @@ public interface DisplayClass {
     void displayHeaderForUsers(Flight flight, List<Customer> c);
 
     void displayFlightsRegisteredByOneUser(String userID);
-
-    void displayArtWork(int options);
 }
